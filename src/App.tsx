@@ -56,30 +56,59 @@ export default function App() {
     const destId = sourceId === 'A' ? 'B' : 'A';
     const destRect = document.getElementById(`flask-${destId}-zone`)?.getBoundingClientRect();
 
-    // Helper to evaluate intersection or pointer-in-rect
-    const isOverTarget = (targetRect?: DOMRect | null, padding = 40) => {
-      if (!targetRect) return false;
-      
-      // 1. Check if the pointer itself is directly inside the target zone
-      if (
-        info.point.x >= targetRect.left - padding &&
-        info.point.x <= targetRect.right + padding &&
-        info.point.y >= targetRect.top - padding &&
-        info.point.y <= targetRect.bottom + padding
-      ) {
-        return true;
-      }
-      
-      // 2. Check if the dragged element intersects heavily with the target zone
-      if (sourceRect) {
-        return !(
-          sourceRect.right < targetRect.left - padding ||
-          sourceRect.left > targetRect.right + padding ||
-          sourceRect.bottom < targetRect.top - padding ||
-          sourceRect.top > targetRect.bottom + padding
-        );
-      }
-      return false;
+    // Score-based target resolving for much better touch/drag accuracy
+    const getDropTarget = () => {
+      const targets = [
+        { id: 'flask', rect: destRect, padding: 30 },
+        { id: 'spring', rect: springRect, padding: 80 },
+        { id: 'cauldron', rect: cauldronRect, padding: 80 }
+      ];
+
+      let bestTarget = null;
+      let maxScore = 0;
+
+      targets.forEach(t => {
+        if (!t.rect) return;
+        let score = 0;
+
+        // 1. Pointer inside target area (Heavy priority factor)
+        if (
+          info.point.x >= t.rect.left - t.padding &&
+          info.point.x <= t.rect.right + t.padding &&
+          info.point.y >= t.rect.top - t.padding &&
+          info.point.y <= t.rect.bottom + t.padding
+        ) {
+          score += 100000;
+        }
+
+        // 2. Overlap area bounding box
+        if (sourceRect) {
+           const overlapLeft = Math.max(sourceRect.left, t.rect.left - t.padding);
+           const overlapRight = Math.min(sourceRect.right, t.rect.right + t.padding);
+           const overlapTop = Math.max(sourceRect.top, t.rect.top - t.padding);
+           const overlapBottom = Math.min(sourceRect.bottom, t.rect.bottom + t.padding);
+
+           if (overlapLeft < overlapRight && overlapTop < overlapBottom) {
+             const area = (overlapRight - overlapLeft) * (overlapBottom - overlapTop);
+             score += area;
+             
+             // Center proximity bonus
+             const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+             const sourceCenterY = sourceRect.top + sourceRect.height / 2;
+             const targetCenterX = t.rect.left + t.rect.width / 2;
+             const targetCenterY = t.rect.top + t.rect.height / 2;
+             const dist = Math.sqrt(Math.pow(sourceCenterX - targetCenterX, 2) + Math.pow(sourceCenterY - targetCenterY, 2));
+             score += Math.max(0, 1000 - dist) * 10;
+           }
+        }
+
+        if (score > maxScore && score > 0) {
+          maxScore = score;
+          bestTarget = t.id;
+        }
+      });
+
+      return bestTarget;
     };
 
     const currentVals = valsRef.current;
@@ -88,8 +117,9 @@ export default function App() {
     let newVals: { A: number, B: number } | null = null;
     let didMove = false;
 
-    // Prioritize evaluating drop into the other flask, then Spring, then Cauldron
-    if (isOverTarget(destRect, 20)) {
+    const targetAction = getDropTarget();
+
+    if (targetAction === 'flask') {
       const amount = Math.min(currentVals[sourceId], currentCaps[destId] - currentVals[destId]);
       if (amount > 0) {
         newVals = {
@@ -99,14 +129,12 @@ export default function App() {
         };
         didMove = true;
       }
-    } else if (isOverTarget(springRect, 40)) {
-      // Drop onto Magic Spring (Fill)
+    } else if (targetAction === 'spring') {
       if (currentVals[sourceId] < currentCaps[sourceId]) {
         newVals = { ...currentVals, [sourceId]: currentCaps[sourceId] };
         didMove = true;
       }
-    } else if (isOverTarget(cauldronRect, 40)) {
-      // Drop onto Magic Cauldron (Empty)
+    } else if (targetAction === 'cauldron') {
       if (currentVals[sourceId] > 0) {
         newVals = { ...currentVals, [sourceId]: 0 };
         didMove = true;
@@ -164,15 +192,29 @@ export default function App() {
   );
 
   const CauldronZone = () => (
-    <div id="cauldron-zone" className="relative w-[8.5rem] h-48 sm:w-44 sm:h-64 border-4 border-dashed border-purple-300 rounded-[2rem] flex flex-col items-center justify-center bg-purple-50/40 backdrop-blur-sm shadow-sm transition-all hover:bg-purple-100/40">
-      <div className="absolute bottom-6 sm:bottom-8 w-20 h-20 sm:w-28 sm:h-28 bg-[#2d1b4e] rounded-[40%] flex items-center justify-center shadow-inner blur-[0.5px]">
-        <div className="w-16 h-16 sm:w-24 sm:h-24 bg-[#3a206b] rounded-[40%] flex items-center justify-center border border-purple-500/30">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-[#251342] rounded-[40%] shadow-inner border-t-[3px] border-purple-500/20" />
+    <div id="cauldron-zone" className="relative w-[8.5rem] h-48 sm:w-44 sm:h-64 rounded-[2rem] flex flex-col items-center justify-center transition-all group">
+      
+      {/* Magical Dark Aura */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 via-fuchsia-500/10 to-indigo-600/20 rounded-[2rem] blur-[20px] opacity-70 group-hover:opacity-100 transition-opacity duration-500 will-change-transform" />
+      
+      {/* Main Container Container */}
+      <div className="absolute inset-0 bg-white/10 backdrop-blur-md rounded-[2rem] border-[3px] border-white/40 shadow-[0_0_20px_rgba(168,85,247,0.2),inset_0_0_20px_rgba(255,255,255,0.8)] overflow-hidden flex flex-col items-center justify-end pb-4 sm:pb-8">
+        
+        {/* Dynamic Cauldron Visual */}
+        <div className="relative w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-b from-purple-900 to-[#1e0a38] rounded-[40%] flex items-center justify-center shadow-[inset_0_-10px_20px_rgba(0,0,0,0.5),0_10px_20px_rgba(0,0,0,0.2)] border-t border-purple-500/50 z-10 animate-float">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-b from-[#2a1045] to-[#130526] rounded-[40%] flex items-center justify-center shadow-inner relative overflow-hidden">
+             {/* Swirling poisonous/magical brew */}
+             <div className="absolute bottom-[-20%] inset-x-[-20%] h-[120%] bg-fuchsia-500/40 blur-[10px] rounded-[50%] animate-swirl" />
+             <div className="absolute bottom-[-10%] inset-x-[-10%] h-[100%] bg-purple-400/40 blur-[15px] rounded-[50%] animate-swirl-reverse" />
+          </div>
+          <Trash2 className="w-8 h-8 sm:w-12 sm:h-12 text-purple-200 z-10 absolute drop-shadow-[0_0_10px_rgba(217,70,239,0.8)]" />
         </div>
       </div>
-      <Trash2 className="w-8 h-8 sm:w-10 sm:h-10 text-purple-300 z-10 absolute bottom-12 sm:bottom-16 drop-shadow-md" />
-      <span className="text-purple-700 font-bold z-10 mt-auto mb-1 sm:mb-2 text-sm sm:text-base tracking-wide">마법 가마솥</span>
-      <span className="text-purple-600/80 text-xs sm:text-sm z-10 mb-4 sm:mb-6 font-medium bg-white/50 px-2 py-0.5 rounded-full border border-purple-100/50 hidden sm:block">버리기 존</span>
+
+      <div className="relative z-10 flex flex-col items-center mt-auto pointer-events-none pb-4 sm:pb-6">
+        <span className="text-purple-900 font-black text-sm sm:text-base tracking-wide drop-shadow-[0_3px_5px_rgba(255,255,255,0.9)]">마법 가마솥</span>
+        <span className="text-purple-800 font-extrabold text-xs sm:text-sm bg-white/80 px-3 py-1 rounded-full mt-1 sm:mt-2 shadow-[0_0_15px_rgba(255,255,255,0.8),inset_0_0_5px_rgba(255,255,255,1)] border-[1.5px] border-purple-200/80 hidden sm:block backdrop-blur-md">🌪️ 버리기 존</span>
+      </div>
     </div>
   );
 
