@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+.animate-water-flow {
+  animation: water-flow 2s linear infinite;
+}
+.animate-particle-1 {
+  animation: particle-rise 2.5s ease-in infinite;
+}
+.animate-particle-2 {
+  animation: particle-rise 3.2s ease-in infinite 0.7s;
+}
+.animate-particle-3 {
+  animation: particle-rise 2.8s ease-in infinite 1.4s;
+}
+.animate-particle-4 {
+  animation: particle-rise 3.5s ease-in infinite 2.1s;
+}
+.animate-swirl {
+  animation: swirl 10s linear infinite;
+}
+.animate-swirl-reverse {
+  animation: swirl 8s linear infinite reverse;
+}
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes water-flow {
+  0% { transform: translateY(-50%); }
+  100% { transform: translateY(0%); }
+}
+@keyframes particle-rise {
+  0% { transform: translateY(10px) scale(0.5); opacity: 0; }
+  20% { opacity: 0.8; }
+  80% { opacity: 0.5; transform: translateY(-70px) scale(1.2); }
+  100% { transform: translateY(-90px) scale(0); opacity: 0; }
+}
+@keyframes swirl {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.2); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}

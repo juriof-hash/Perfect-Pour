@@ -1,0 +1,6 @@
+{
+  "name": "Magic Potion Puzzle",
+  "description": "A drag-and-drop water jug puzzle game utilizing mathematical deduction.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
