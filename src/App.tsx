@@ -336,7 +336,7 @@ export default function App() {
             <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-indigo-300 rounded-full blur-[50px] opacity-20 pointer-events-none" />
             
             <h2 className="text-2xl sm:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-pink-500 mb-8 text-center flex items-center justify-center gap-2">
-              <Sparkles className="w-6 h-6 text-pink-400" /> 커스텀 마법 실험실
+              <Sparkles className="w-6 h-6 text-pink-400" /> 마법의 물약 제조
             </h2>
             
             <div className="mb-6 relative z-10">
